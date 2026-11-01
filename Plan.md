@@ -69,9 +69,14 @@
 - Belt-and-braces: `docs/` will show how to set a **DHCP reservation** (router) so the IP also stays stable — then `ssh`/clients can alternatively use the IP.
 - Service port: **TCP 3240** (`usbipd` default). Signature text for the status call: `usbip list -r banach.local`.
 
-### Why systemd instead of bashrc (as requested, explained)
+### Boot readiness: systemd — and NOT bashrc (corrected 2026-11-01)
 
-You asked for a "bashrc script that makes the Pi ready after boot". A bashrc hook has two problems: (a) it only runs **when a user logs in on the Pi** — nobody may ever log in, but the USB sharing should still work; (b) no supervision/restart. The proper tool is a **systemd unit** — it does exactly what you want: "instantly ready after power-on", with auto-restart. `install.sh` still installs a small **optional bashrc convenience** on the Pi (a `wirehub` alias + config), so you can type `wirehub` in any Pi terminal. Both worlds served.
+Sebastian's correction is right: a bashrc hook **cannot** make software run at power-on (bashrc only executes when a *user interactively logs in* — which nobody will do on a headless Pi). It was planned as convenience only and is now **removed from the project entirely**. The boot mechanism is **exclusively systemd**:
+
+- `usbipd.service` — kernel-facing USB/IP server, listens on TCP 3240
+- `wirehubd.service` — our orchestrator; after boot it automatically shares every allowed device (no login, no monitor needed)
+
+Both units are `WantedBy=multi-user.target` with `Restart=always` → **power on → fully ready within ~30 s, headless, no screen, no login**. The CLI is installed system-wide to `/usr/local/bin/wirehub` (which is on PATH by default — no bashrc hack needed).
 
 ---
 
@@ -93,6 +98,7 @@ You asked for a "bashrc script that makes the Pi ready after boot". A bashrc hoo
 - [ ] 1.4 Client attach test from a Linux box (and loopback test from banach itself using `vhci_hcd`)
 - [ ] 1.5 Record results matrix: which of Sebastian's devices attach cleanly (Arduino/serial, mouse, stick)
 - [ ] 1.6 Document first-lesson findings (Cadence: every oddity → repo `docs/notes.md` + skill LOG)
+- [ ] 1.7 Client-test execution: loopback on banach (`usbip attach -r banach.local`) → stick appears in `lsusb` of the attached (v)hci — JARVIS container noted impossible (see Q1)
 
 ### Phase 2 — Configuration model
 - [ ] 2.1 `config/wirehub.json` schema:
@@ -113,7 +119,7 @@ You asked for a "bashrc script that makes the Pi ready after boot". A bashrc hoo
 - [ ] 4.1 `systemd/usbipd.service` shipped (standalone kernel daemon)
 - [ ] 4.2 `systemd/wirehubd.service` shipped (our Python daemon, `After=network-online.target`, `Restart=always`)
 - [ ] 4.3 Real power-cycle test on the Pi: boot → within ~30 s everything allowed is exported, no login needed
-- [ ] 4.4 Optional `scripts/bashrc_wirehub.sh` block: adds `~/.local/bin/wirehub` alias — documented as *convenience only*, not required for boot-readiness
+- [ ] 4.4 CLI installed to `/usr/local/bin/wirehub` — **no bashrc hook (removed by design decision 2026-11-01; systemd is the sole boot mechanism)**
 
 ### Phase 5 — Install & Uninstall scripts (the *one-liner* requirement)
 - [ ] 5.1 `install.sh`:
@@ -164,12 +170,13 @@ Each rollout step ends with: **plan checkboxes ticked + tested on banach before 
 
 ## 4. Open questions (to close before/while implementing)
 
-- [ ] Q1 Which client devices will you primarily use? (gives priority: Linux native vs Windows/WSL?)
-- [ ] Q2 Do you have a spare USB stick we may sacrifice for tests on banach? (safest test device)
-- [ ] Q3 Firewall: keep port 3240 fully LAN-open or restricted-to-subnet? (default goal = restricted)
+- [x] Q1 **Test client** (resolved 2026-11-01): the J.A.R.V.I.S. agent OS (proot container on the Pixel) **cannot** act as a USB/IP client — no kernel-module access in the container (no `vhci_hcd`, no `/dev/bus/usb`). Accepted strategy: **loopback test on banach first** (`banach` ↔ `banach.local` proves server *and* client side of the stack), real Linux-PC client later, Windows (usbip-win / WSL2) documented in Phase 6 on demand.
+- [x] Q2 **Test device** (resolved 2026-11-01): a spare USB stick is available — Sebastian plugs it into banach on request (the moment wirehubd is ready).
+- [ ] Q3 Firewall: keep port 3240 fully LAN-open or restricted-to-subnet? (default goal = restricted; decide in Phase 7)
 
 ---
 
 ## 5. Changelog of this plan
 
 - 2026-11-01 — Plan.md authored (v1): strategy = kernel USB/IP + Python daemon `wirehubd`; phases 0–8 defined.
+- 2026-11-01 (v2) — Sebastian's correction applied: **bashrc fully removed from concept**; boot readiness is systemd-only (headless power-on requirement). Test-client strategy fixed (Q1: loopback on banach; JARVIS container technically impossible). Q2 resolved (stick plugged on demand).

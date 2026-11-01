@@ -1,0 +1,12 @@
+[Unit]
+Description=USB/IP server (usbipd, TCP 3240) - wifi-usb-on-raspi
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=@USBIPD@
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

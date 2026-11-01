@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""wirehub - small CLI to control/inspect wifi-usb-on-raspi from the Pi terminal."""
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import wirehublib as lib  # noqa: E402
+
+
+def cmd_status(a):
+    cfg = lib.load_config(a.config)
+    bound = lib.bound_busids()
+    print("host      :", os.uname().nodename + ".local")
+    print("usbipd    :", "expecting port", cfg["usbipd"].get("port", 3240))
+    print("devices:")
+    if not lib.usb_locations():
+        print("  (none present)")
+    for busid in lib.usb_locations():
+        try:
+            x = lib.device_attrs(busid)
+        except OSError:
+            print(f"  {busid}: (vanished)")
+            continue
+        exportable = any(lib.matches(r, x) for r in cfg["allowlist"])
+        state = "EXPORTED" if busid in bound else ("allowed" if exportable else "not-allowed")
+        print(f"  {busid}: {x['vid']}:{x['pid']}  {x['product'] or '?'}  serial={x['serial'] or '-'}  [{state}]")
+
+
+def cmd_list(a):
+    rc, out = lib.run_usbip("list", "-l")
+    print(out)
+    sys.exit(rc)
+
+
+def _need_root():
+    if os.geteuid() != 0:
+        print("error: export/unexport need root, run with sudo", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_export(a):
+    _need_root()
+    rc, out = lib.export(a.busid)
+    print(out)
+    sys.exit(rc)
+
+
+def cmd_unexport(a):
+    _need_root()
+    rc, out = lib.unexport(a.busid)
+    print(out)
+    sys.exit(rc)
+
+
+def cmd_configcheck(a):
+    try:
+        cfg = lib.load_config(a.config)
+    except Exception as e:
+        print("FAIL:", e)
+        sys.exit(1)
+    probs = lib.validate_config(cfg)
+    print(f"config {a.config}: {len(probs)} problem(s)")
+    for p in probs:
+        print(" -", p)
+    sys.exit(1 if probs else 0)
+
+
+def cmd_tail(a):
+    subprocess.run(["journalctl", "-n", "30", "-f", "-u", "wirehubd", "-u", "usbipd"])
+
+
+def main():
+    ap = argparse.ArgumentParser(description="wirehub - control wifi-usb-on-raspi")
+    ap.add_argument("--config", default=lib.DEFAULT_CONFIG)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("status", help="devices + export state").set_defaults(func=cmd_status)
+    sub.add_parser("list", help="raw 'usbip list -l'").set_defaults(func=cmd_list)
+    p = sub.add_parser("export", help="share a device: wirehub export <busid>")
+    p.add_argument("busid")
+    p.set_defaults(func=cmd_export)
+    p = sub.add_parser("unexport", help="stop sharing: wirehub unexport <busid>")
+    p.add_argument("busid")
+    p.set_defaults(func=cmd_unexport)
+    sub.add_parser("config-check", help="validate the config file").set_defaults(func=cmd_configcheck)
+    sub.add_parser("tail", help="follow service logs").set_defaults(func=cmd_tail)
+    a = ap.parse_args()
+    a.func(a)
+
+
+if __name__ == "__main__":
+    main()

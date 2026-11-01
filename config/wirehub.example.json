@@ -1,0 +1,19 @@
+{
+  "_comment": "wifi-usb-on-raspi :: wirehub config. vid/pid are 4-hex lowercase ('0781','5567'). serial=null means 'any serial'. autoExport=true shares the device automatically at boot/hotplug.",
+  "usbipd": { "port": 3240 },
+  "statusApi": {
+    "enabled": true,
+    "lan": false,
+    "port": 22824
+  },
+  "detachOnStop": true,
+  "allowlist": [
+    {
+      "name": "example-flash-stick",
+      "vid": "0781",
+      "pid": "5567",
+      "serial": null,
+      "autoExport": true
+    }
+  ]
+}

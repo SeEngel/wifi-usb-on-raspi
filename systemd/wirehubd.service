@@ -1,0 +1,13 @@
+[Unit]
+Description=wirehubd - USB/IP auto-export orchestrator (wifi-usb-on-raspi)
+Wants=network-online.target
+After=network-online.target usbipd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/wirehub/wirehubd.py --config /etc/wirehub/config.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
