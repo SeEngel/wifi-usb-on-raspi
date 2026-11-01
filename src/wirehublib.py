@@ -109,12 +109,12 @@ def bound_busids():
 
 
 def is_exported(busid):
-    """True if this exact device's sysfs driver is usbip_host (reliable single-device check)."""
+    """True if this exact device's sysfs driver is usbip-host/server-side export driver."""
     drv = SYSFS_USB / busid / "driver"
     if not drv.exists():
         return False
     try:
-        return drv.resolve().name == "usbip_host"
+        return drv.resolve().name in ("usbip-host", "usbip_host")
     except OSError:
         return False
 
