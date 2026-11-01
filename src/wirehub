@@ -6,7 +6,10 @@ import os
 import subprocess
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+_DIR = os.path.dirname(os.path.realpath(__file__))
+for _p in (_DIR, "/usr/local/lib/wirehub"):
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
 import wirehublib as lib  # noqa: E402
 
 
