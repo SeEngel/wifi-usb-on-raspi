@@ -96,7 +96,7 @@ Both units are `WantedBy=multi-user.target` with `Restart=always` → **power on
 - [x] 1.2 Load modules `usbip_core`, `usbip_host`; make persistent via `/etc/modules-load.d/wirehub.conf`
 - [x] 1.3 Start `usbipd`; list devices (`usbip list -l`); bind one test device (e.g. nothing critical — use a stick or the hub first)
 - [x] 1.4 Client attach test from a Linux box (and loopback test from banach itself using `vhci_hcd`) **(done: loopback attach on banach itself — proof recorded in docs/notes.md)**
-- [ ] 1.5 Record results matrix: which of Sebastian's devices attach cleanly (Arduino/serial, mouse, stick)
+- [x] 1.5 Record results matrix: ESP32-S3-Touch-LCD-1.69 ✔ (303a:1001, /dev/ttyACM0 over USB/IP full-speed), HID mouse ✔, HID keyboard ✔ (all exported + auto-allowlist rules); second MC pending
 - [x] 1.6 Document first-lesson findings (Cadence: every oddity → repo `docs/notes.md` + skill LOG)
 - [x] 1.7 Client-test execution: loopback on banach (`usbip attach -r banach.local`) → stick appears in `lsusb` of the attached (v)hci — JARVIS container noted impossible (see Q1)
 
