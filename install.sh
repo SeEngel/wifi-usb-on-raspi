@@ -91,7 +91,23 @@ systemctl enable --now usbipd.service >/dev/null 2>&1 || true
 systemctl enable --now wirehubd.service >/dev/null 2>&1 || true
 sleep 2
 
-# --- 5. verification -----------------------------------------------------------
+# --- 5. firewall (USB/IP restricted to private networks) + mDNS ad -------------
+say "firewall (nftables: USB/IP for private networks only) ..."
+if [[ -e /etc/nftables.conf && ! -e /etc/nftables.conf.pre-wirehub ]]; then
+  cp -a /etc/nftables.conf /etc/nftables.conf.pre-wirehub
+  say "  existing nftables.conf backed up to /etc/nftables.conf.pre-wirehub"
+fi
+if install -m 0644 "${HERE}/fw/nftables.conf" /etc/nftables.conf; then
+  /usr/sbin/nft -f /etc/nftables.conf && systemctl enable nftables >/dev/null 2>&1 \
+    && say "  firewall applied + enabled (backup: /etc/nftables.conf.pre-wirehub)" \
+    || echo "  warning: nftables apply failed - USB/IP stays open (check manually)"
+fi
+say "mDNS advertisement (_usbip._tcp) ..."
+install -d /etc/avahi/services
+install -m 0644 "${HERE}/avahi/usbip.service" /etc/avahi/services/usbip.service
+systemctl restart avahi-daemon 2>/dev/null || true
+
+# --- 6. verification -----------------------------------------------------------
 fail=0
 systemctl is-active --quiet usbipd.service  && say "usbipd.service: ACTIVE"   || { say "usbipd.service: NOT active"; fail=1; }
 systemctl is-active --quiet wirehubd.service && say "wirehubd.service: ACTIVE" || { say "wirehubd.service: NOT active"; fail=1; }

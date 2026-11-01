@@ -21,9 +21,10 @@ fi
 # 1. stop services, return devices to the local machine first
 say "stopping services (devices return to local use) ..."
 systemctl disable --now wirehubd.service usbipd.service >/dev/null 2>&1 || true
-for b in /sys/bus/usb/drivers/usbip_host/* 2>/dev/null; do
+for b in /sys/bus/usb/drivers/usbip-host/* /sys/bus/usb/drivers/usbip_host/*; do
   [[ -e "$b" ]] || continue
   busid="$(basename "$b" | cut -d: -f1)"
+  [[ "$busid" =~ ^[0-9]+-[0-9.]+$ ]] || continue   # skip control files (bind/uevent/...)
   say "unbinding ${busid} ..."
   usbip unbind -b "$busid" >/dev/null 2>&1 || true
 done
@@ -34,7 +35,15 @@ systemctl daemon-reload
 # 2. files
 rm -f /usr/local/bin/wirehub
 rm -rf /usr/local/lib/wirehub
+rm -f /usr/local/bin/usbip
 rm -f /etc/modules-load.d/wirehub.conf
+rm -f /etc/avahi/services/usbip.service
+systemctl restart avahi-daemon 2>/dev/null || true
+if [[ -e /etc/nftables.conf.pre-wirehub ]]; then
+  cp -a /etc/nftables.conf.pre-wirehub /etc/nftables.conf
+  /usr/sbin/nft -f /etc/nftables.conf 2>/dev/null || systemctl disable --now nftables 2>/dev/null || true
+  say "nftables config restored from pre-wirehub backup"
+fi
 say "system files removed"
 
 # 3. config -> backup (or real removal with --purge)
