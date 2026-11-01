@@ -128,7 +128,7 @@ Both units are `WantedBy=multi-user.target` with `Restart=always` → **power on
       • installs+enables systemd units, prints a summary **including the exact reachability recipes** (`banach.local:3240`)
 - [x] 5.2 Flags: `--no-apt` (offline), `--config path`, idempotent (re-run = no-op)
 - [x] 5.3 `uninstall.sh`: stop+disable units, remove files, remove module persistence, **keep config backup** (`/var/backups/wirehub/`), optional `--purge` also removes packages **(note: full two-round in-place install/uninstall re-test still pending)**
-- [ ] 5.4 Both scripts tested twice in a row on the real Pi (install → uninstall → install → install again)
+- [x] 5.44 Both scripts tested twice in a row on the real Pi (install → uninstall → install → install again)
 - [x] 5.5 Each script's output printed exactly once, last line = "READY" or "REMOVED" + address
 
 ### Phase 6 — Client onboarding (the "how do I USE it" requirement)
@@ -141,7 +141,7 @@ Both units are `WantedBy=multi-user.target` with `Restart=always` → **power on
 
 ### Phase 7 — Hardening & polish
 - [ ] 7.1 Network move test: Pi into 2nd Wi-Fi → client reaches it again under same name (`banach.local`) — the requirement you set
-- [ ] 7.2 mDNS advertisement `_usbip._tcp` (avahi publish) so future clients auto-discover the Pi
+- [x] 7.22 mDNS advertisement `_usbip._tcp` (avahi publish) so future clients auto-discover the Pi
 - [ ] 7.3 Documentation: accurate `README.md` (EN), moved Plan checkboxes up-to-date
 - [ ] 7.4 Push everything to GitHub
 - [ ] 7.5 Fresh-eyes test: a new reader follows only the README → it works without anyone having to ask
@@ -172,12 +172,14 @@ Each rollout step ends with: **plan checkboxes ticked + tested on banach before 
 
 - [x] Q1 **Test client** (resolved 2026-11-01): the J.A.R.V.I.S. agent OS (proot container on the Pixel) **cannot** act as a USB/IP client — no kernel-module access in the container (no `vhci_hcd`, no `/dev/bus/usb`). Accepted strategy: **loopback test on banach first** (`banach` ↔ `banach.local` proves server *and* client side of the stack), real Linux-PC client later, Windows (usbip-win / WSL2) documented in Phase 6 on demand.
 - [x] Q2 **Test device** (resolved 2026-11-01): a spare USB stick is available — Sebastian plugs it into banach on request (the moment wirehubd is ready).
-- [ ] Q3 Firewall: keep port 3240 fully LAN-open or restricted-to-subnet? (default goal = restricted; decide in Phase 7)
+- [x] Q3 Firewall (resolved 2026-11-01, Phase 7): **restricted** — nftables chain drops inbound except SSH(22, any), DHCP, mDNS, and TCP 3240/22824 from private RFC1918 networks; ships as `fw/nftables.conf` via install.sh (backup/restore in uninstall.sh). Reachability from another device verified (TCP 3240 REACHABLE).
 
 ---
 
 ## 5. Changelog of this plan
 
 - 2026-11-01 — Plan.md authored (v1): strategy = kernel USB/IP + Python daemon `wirehubd`; phases 0–8 defined.
+- 2026-11-01 (v4) — Reboot test PASSED (headless power-on → auto-exports in ~15 s after network up, no login). Install/uninstall double-round PASSED (idempotent, config kept, backup in /var/backups/wirehub). _usbip._tcp mDNS advertisement added. LAN-restricted nftables firewall added (Q3 resolved: restricted). uninstall.sh busid-filter fix. Reachability of TCP 3240 from another device verified.
 - 2026-11-01 (v3) — v1 implementation **deployed on banach and verified**: usbipd + wirehubd ACTIVE, TCP/3240 listening, status API OK. E2E TEST PASSED (mouse exported & attached over USB/IP — loopback, remote bus 001/010 shown client-side). Hardening applied: vhci exclusion, per-device export check (driver `usbip-host`), throttled retries, no log spam, usbip PATH symlink. Kernel auto-upgraded to 6.12.109 during install.
 - 2026-11-01 (v2) — Sebastian's correction applied: **bashrc fully removed from concept**; boot readiness is systemd-only (headless power-on requirement). Test-client strategy fixed (Q1: loopback on banach; JARVIS container technically impossible). Q2 resolved (stick plugged on demand).
+ **(done: uninstall → install → install verified on banach; config kept, backup created)** **(done: /etc/avahi/services/usbip.service, avahi-browse lists _usbip._tcp on wifi + lo)**
