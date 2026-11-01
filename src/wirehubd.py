@@ -28,6 +28,8 @@ def log(msg):
 
 def sync_once():
     """Export every present, allowed, not-yet-bound device (with throttling + no log spam)."""
+    if os.path.exists("/etc/wirehub/flash.lock"):
+        return  # hardware-flash läuft: Auto-Export pausiert (siehe JARVIS pages/hardware/pi-setup)
     cfg = STATE["config"]
     attempts = STATE.setdefault("attemptTime", {})
     errSeen = STATE.setdefault("errorSeen", {})
@@ -76,6 +78,7 @@ def status_json():
         "usbipPort": cfg["usbipd"].get("port", 3240),
         "devices": devices,
         "allowlistRules": len(cfg["allowlist"]),
+        "flashPaused": os.path.exists("/etc/wirehub/flash.lock"),
         "lastError": STATE["lastError"],
         "timestamp": time.time(),
     }
