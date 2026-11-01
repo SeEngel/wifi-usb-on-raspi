@@ -27,42 +27,49 @@ def log(msg):
 
 
 def sync_once():
-    """Export every present, allowed, not-yet-bound device."""
+    """Export every present, allowed, not-yet-bound device (with throttling + no log spam)."""
     cfg = STATE["config"]
-    wanted = {}
+    attempts = STATE.setdefault("attemptTime", {})
+    errSeen = STATE.setdefault("errorSeen", {})
+    now = time.time()
     for busid in lib.usb_locations():
         try:
             attrs = lib.device_attrs(busid)
         except OSError:
             continue  # device vanished mid-scan
-        for rule in cfg["allowlist"]:
-            if rule.get("autoExport", True) and lib.matches(rule, attrs):
-                wanted[busid] = (rule, attrs)
-                break
-    bound = lib.bound_busids()
-    for busid, (rule, attrs) in wanted.items():
-        if busid in bound:
+        if lib.is_exported(busid):
+            errSeen.pop(busid, None)
             continue
-        label = attrs["product"] or attrs["vid"] + ":" + attrs["pid"]
-        log(f"exporting {busid} '{label}' (rule '{rule['name']}')")
-        rc, out = lib.export(busid)
-        if rc != 0:
-            STATE["lastError"] = out
-            log(f"  export FAILED: {out}")
-        else:
-            log(f"  export ok: {busid}")
+        for rule in cfg["allowlist"]:
+            if not (rule.get("autoExport", True) and lib.matches(rule, attrs)):
+                continue
+            # throttle repeat attempts for the same device (errors otherwise spam)
+            if now - attempts.get(busid, 0) < 30:
+                break
+            attempts[busid] = now
+            label = attrs["product"] or attrs["vid"] + ":" + attrs["pid"]
+            log(f"exporting {busid} '{label}' (rule '{rule['name']}')")
+            rc, out = lib.export(busid)
+            if rc != 0:
+                STATE["lastError"] = out
+                if errSeen.get(busid) != out:
+                    errSeen[busid] = out
+                    log(f"  export FAILED (retry in 30s): {out}")
+            else:
+                errSeen.pop(busid, None)
+                log(f"  export ok: {busid}")
+            break
 
 
 def status_json():
     cfg = STATE["config"]
-    bound = lib.bound_busids()
     devices = []
     for busid in lib.usb_locations():
         try:
             a = lib.device_attrs(busid)
         except OSError:
             continue
-        a["bound"] = busid in bound
+        a["exported"] = lib.is_exported(busid)
         devices.append(a)
     return {
         "host": socket.gethostname(),
@@ -131,9 +138,10 @@ def main():
             STATE["lastError"] = str(e)
             log("sync error: " + str(e))
     if STATE["config"].get("detachOnStop", True):
-        for busid in sorted(lib.bound_busids()):
-            log(f"unexporting on shutdown: {busid}")
-            lib.unexport(busid)
+        for busid in lib.usb_locations():
+            if lib.is_exported(busid):
+                log(f"unexporting on shutdown: {busid}")
+                lib.unexport(busid)
     log("stopped")
 
 

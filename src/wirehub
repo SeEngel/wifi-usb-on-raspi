@@ -15,7 +15,6 @@ import wirehublib as lib  # noqa: E402
 
 def cmd_status(a):
     cfg = lib.load_config(a.config)
-    bound = lib.bound_busids()
     print("host      :", os.uname().nodename + ".local")
     print("usbipd    :", "expecting port", cfg["usbipd"].get("port", 3240))
     print("devices:")
@@ -28,7 +27,7 @@ def cmd_status(a):
             print(f"  {busid}: (vanished)")
             continue
         exportable = any(lib.matches(r, x) for r in cfg["allowlist"])
-        state = "EXPORTED" if busid in bound else ("allowed" if exportable else "not-allowed")
+        state = "EXPORTED" if lib.is_exported(busid) else ("allowed" if exportable else "not-allowed")
         print(f"  {busid}: {x['vid']}:{x['pid']}  {x['product'] or '?'}  serial={x['serial'] or '-'}  [{state}]")
 
 

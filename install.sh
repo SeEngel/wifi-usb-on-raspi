@@ -46,6 +46,14 @@ USBIPD_BIN="$(command -v usbipd || true)"
 [[ -n "$USBIPD_BIN" ]] || { echo "error: 'usbipd' binary not found (did 'apt-get install usbip' succeed?)"; exit 1; }
 say "usbipd found at: ${USBIPD_BIN}"
 
+# Debian installs the 'usbip' client into /usr/sbin which is not on the default
+# user PATH -> symlink it into /usr/local/bin so 'usbip' just works everywhere.
+USBIP_BIN="$(command -v usbip || true)"
+if [[ -n "$USBIP_BIN" && "$(dirname "$USBIP_BIN")" != "/usr/local/bin" ]]; then
+  ln -sf "$USBIP_BIN" /usr/local/bin/usbip
+  say "symlinked ${USBIP_BIN} -> /usr/local/bin/usbip"
+fi
+
 # --- 2. kernel modules (load now + persist at boot) ---------------------------
 modprobe usbip_core 2>/dev/null || echo "note: usbip_core module did not load (reboot may be needed)"
 modprobe usbip_host 2>/dev/null || echo "note: usbip_host module did not load (reboot may be needed)"

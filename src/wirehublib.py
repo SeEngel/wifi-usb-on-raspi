@@ -44,13 +44,20 @@ def validate_config(cfg):
 
 
 def usb_locations():
-    """All present top-level USB devices (busids, e.g. '1-1.2')."""
+    """All present top-level USB devices (busids), excluding virtual vhci devices."""
     out = []
     for d in SYSFS_USB.glob("*"):
         if ":" in d.name:
             continue  # interface dirs, not devices
-        if (d / "idVendor").exists() and (d / "idProduct").exists():
-            out.append(d.name)
+        if not ((d / "idVendor").exists() and (d / "idProduct").exists()):
+            continue
+        try:
+            resolved = str(d.resolve())
+        except OSError:
+            resolved = ""
+        if "vhci" in resolved:
+            continue  # client-side virtual device (vhci) - nothing to export here
+        out.append(d.name)
     return sorted(out)
 
 
@@ -99,6 +106,17 @@ def bound_busids():
             continue
         out.add(n.split(":")[0])
     return out
+
+
+def is_exported(busid):
+    """True if this exact device's sysfs driver is usbip_host (reliable single-device check)."""
+    drv = SYSFS_USB / busid / "driver"
+    if not drv.exists():
+        return False
+    try:
+        return drv.resolve().name == "usbip_host"
+    except OSError:
+        return False
 
 
 def run_usbip(*args):
