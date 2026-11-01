@@ -83,53 +83,53 @@ Both units are `WantedBy=multi-user.target` with `Restart=always` → **power on
 ## 2. Phases & Checklists
 
 ### Phase 0 — Repository scaffolding
-- [ ] 0.1 Directory layout inside this repo:
+- [x] 0.1 Directory layout inside this repo:
       `src/` (wirehubd + wirehub CLI), `config/`, `scripts/`, `systemd/`, `docs/`, `tests/`,
       plus `install.sh`, `uninstall.sh`, `README.md`, `Plan.md`
-- [ ] 0.2 `.gitignore` (pycache, venv, backups)
-- [ ] 0.3 Git identity on `banach` checked/available; commit plan
-- [ ] 0.4 `LICENSE` (MIT) + copyright line
+- [x] 0.2 `.gitignore` (pycache, venv, backups)
+- [x] 0.3 Git identity on `banach` checked/available; commit plan (identity: banach <banach@banach.local>, commits via -c flags)
+- [x] 0.4 `LICENSE` (MIT) + copyright line
 - [x] 0.5 `Plan.md` created (this file)
 
 ### Phase 1 — Feasibility spike (raw usbip, by hand)
-- [ ] 1.1 Install packages on Pi: `usbip-utils` + kernel modules (`linux-modules-*-rpi` already have them; verify `apt-cache usbip`)
-- [ ] 1.2 Load modules `usbip_core`, `usbip_host`; make persistent via `/etc/modules-load.d/wirehub.conf`
-- [ ] 1.3 Start `usbipd`; list devices (`usbip list -l`); bind one test device (e.g. nothing critical — use a stick or the hub first)
-- [ ] 1.4 Client attach test from a Linux box (and loopback test from banach itself using `vhci_hcd`)
+- [x] 1.1 Install packages on Pi: `usbip-utils` + kernel modules (`linux-modules-*-rpi` already have them; verify `apt-cache usbip`)
+- [x] 1.2 Load modules `usbip_core`, `usbip_host`; make persistent via `/etc/modules-load.d/wirehub.conf`
+- [x] 1.3 Start `usbipd`; list devices (`usbip list -l`); bind one test device (e.g. nothing critical — use a stick or the hub first)
+- [x] 1.4 Client attach test from a Linux box (and loopback test from banach itself using `vhci_hcd`) **(done: loopback attach on banach itself — proof recorded in docs/notes.md)**
 - [ ] 1.5 Record results matrix: which of Sebastian's devices attach cleanly (Arduino/serial, mouse, stick)
-- [ ] 1.6 Document first-lesson findings (Cadence: every oddity → repo `docs/notes.md` + skill LOG)
-- [ ] 1.7 Client-test execution: loopback on banach (`usbip attach -r banach.local`) → stick appears in `lsusb` of the attached (v)hci — JARVIS container noted impossible (see Q1)
+- [x] 1.6 Document first-lesson findings (Cadence: every oddity → repo `docs/notes.md` + skill LOG)
+- [x] 1.7 Client-test execution: loopback on banach (`usbip attach -r banach.local`) → stick appears in `lsusb` of the attached (v)hci — JARVIS container noted impossible (see Q1)
 
 ### Phase 2 — Configuration model
-- [ ] 2.1 `config/wirehub.json` schema:
+- [x] 2.1 `config/wirehub.json` schema:
       `allowedDevices[] {busid?, vid, pid, serial, name, autoExport}`, `httpStatusApi {enabled, lan}`, `logLevel`
-- [ ] 2.2 Schema validation (`jsonschema`) + config example file
-- [ ] 2.3 `wirehub config check` subcommand
+- [x] 2.2 Schema validation (`jsonschema`) + config example file — done with a stdlib checker, no jsonschema dependency needed
+- [x] 2.3 `wirehub config check` subcommand
 
 ### Phase 3 — Daemon `wirehubd` (Python)
-- [ ] 3.1 Core: pyudev hotplug monitor → bind+export according to config (allowlist rules)
-- [ ] 3.2 Startup resync: bind/export everything allowed that is already plugged (survives reboot without client)
-- [ ] 3.3 Status JSON API (`GET /status`, `GET /devices`) — default **localhost only**, LAN switchable in config
-- [ ] 3.4 Logging to systemd journal, log levels, rotation-friendly
-- [ ] 3.5 Graceful stop: detach-export on SIGTERM, *never* yank a device a client is actively using (configurable)
+- [x] 3.1 Core: pyudev hotplug monitor → bind+export according to config (allowlist rules)
+- [x] 3.2 Startup resync: bind/export everything allowed that is already plugged (survives reboot without client)
+- [x] 3.3 Status JSON API (`GET /status`, `GET /devices`) — default **localhost only**, LAN switchable in config
+- [x] 3.4 Logging to systemd journal, log levels, rotation-friendly
+- [x] 3.5 Graceful stop: detach-export on SIGTERM, *never* yank a device a client is actively using (configurable)
 - [ ] 3.6 Unit test suite (daemon logic mocked via fake `usbip` command injection)
-- [ ] 3.7 CLI `wirehub`: `status`, `list`, `export [busid]`, `unexport [busid]`, `tail` (journal follow)
+- [x] 3.7 CLI `wirehub`: `status`, `list`, `export [busid]`, `unexport [busid]`, `tail` (journal follow)
 
 ### Phase 4 — Boot integration (systemd + optional bashrc)
-- [ ] 4.1 `systemd/usbipd.service` shipped (standalone kernel daemon)
-- [ ] 4.2 `systemd/wirehubd.service` shipped (our Python daemon, `After=network-online.target`, `Restart=always`)
+- [x] 4.1 `systemd/usbipd.service` shipped (standalone kernel daemon)
+- [x] 4.2 `systemd/wirehubd.service` shipped (our Python daemon, `After=network-online.target`, `Restart=always`)
 - [ ] 4.3 Real power-cycle test on the Pi: boot → within ~30 s everything allowed is exported, no login needed
-- [ ] 4.4 CLI installed to `/usr/local/bin/wirehub` — **no bashrc hook (removed by design decision 2026-11-01; systemd is the sole boot mechanism)**
+- [x] 4.4 CLI installed to `/usr/local/bin/wirehub` — **no bashrc hook (removed by design decision 2026-11-01; systemd is the sole boot mechanism)**
 
 ### Phase 5 — Install & Uninstall scripts (the *one-liner* requirement)
-- [ ] 5.1 `install.sh`:
+- [x] 5.1 `install.sh`:
       • `apt-get install` needed packages
       • writes `modules-load.d`, copies daemon+CLI, writes config if missing (asks before overwriting)
       • installs+enables systemd units, prints a summary **including the exact reachability recipes** (`banach.local:3240`)
-- [ ] 5.2 Flags: `--no-apt` (offline), `--config path`, idempotent (re-run = no-op)
-- [ ] 5.3 `uninstall.sh`: stop+disable units, remove files, remove module persistence, **keep config backup** (`/var/backups/wirehub/`), optional `--purge` also removes packages
+- [x] 5.2 Flags: `--no-apt` (offline), `--config path`, idempotent (re-run = no-op)
+- [x] 5.3 `uninstall.sh`: stop+disable units, remove files, remove module persistence, **keep config backup** (`/var/backups/wirehub/`), optional `--purge` also removes packages **(note: full two-round in-place install/uninstall re-test still pending)**
 - [ ] 5.4 Both scripts tested twice in a row on the real Pi (install → uninstall → install → install again)
-- [ ] 5.5 Each script's output printed exactly once, last line = "READY" or "REMOVED" + address
+- [x] 5.5 Each script's output printed exactly once, last line = "READY" or "REMOVED" + address
 
 ### Phase 6 — Client onboarding (the "how do I USE it" requirement)
 - [ ] 6.1 `docs/clients-linux.md`: for any Debian/Ubuntu box — install `usbip`, attach one-liner, auto-attach helper
@@ -179,4 +179,5 @@ Each rollout step ends with: **plan checkboxes ticked + tested on banach before 
 ## 5. Changelog of this plan
 
 - 2026-11-01 — Plan.md authored (v1): strategy = kernel USB/IP + Python daemon `wirehubd`; phases 0–8 defined.
+- 2026-11-01 (v3) — v1 implementation **deployed on banach and verified**: usbipd + wirehubd ACTIVE, TCP/3240 listening, status API OK. E2E TEST PASSED (mouse exported & attached over USB/IP — loopback, remote bus 001/010 shown client-side). Hardening applied: vhci exclusion, per-device export check (driver `usbip-host`), throttled retries, no log spam, usbip PATH symlink. Kernel auto-upgraded to 6.12.109 during install.
 - 2026-11-01 (v2) — Sebastian's correction applied: **bashrc fully removed from concept**; boot readiness is systemd-only (headless power-on requirement). Test-client strategy fixed (Q1: loopback on banach; JARVIS container technically impossible). Q2 resolved (stick plugged on demand).
